@@ -38,6 +38,10 @@ export interface IGitCommandManager {
   revParse(ref: string): Promise<string>
   setEnvironmentVariable(name: string, value: string): void
   shaExists(sha: string): Promise<boolean>
+  show(object: string): Promise<string | undefined>
+  sparseCheckoutSet(rules: string): Promise<boolean>
+  sparseCheckoutList(): Promise<boolean>
+  sparseCheckoutDisable(): Promise<boolean>
   submoduleForeach(command: string, recursive: boolean): Promise<string>
   submoduleSync(recursive: boolean): Promise<void>
   submoduleUpdate(fetchDepth: number, recursive: boolean): Promise<void>
@@ -323,6 +327,40 @@ class GitCommandManager {
     return output.exitCode === 0
   }
 
+  async show(object: string): Promise<string | undefined> {
+    const args = ['show', object]
+    const output = await this.execGit(args, true)
+    if (output.exitCode === 0) {
+      return output.stdout.trim()
+    } else {
+      return undefined
+    }
+  }
+
+  async sparseCheckoutSet(rules: string): Promise<boolean> {
+    const args = ['sparse-checkout', 'set', '--no-cone', '--stdin']
+    const output = await this.execGit(
+      args,
+      true,
+      false,
+      {},
+      Buffer.from(rules, 'utf-8')
+    )
+    return output.exitCode === 0
+  }
+
+  async sparseCheckoutList(): Promise<boolean> {
+    const args = ['sparse-checkout', 'list']
+    const output = await this.execGit(args, true)
+    return output.exitCode === 0
+  }
+
+  async sparseCheckoutDisable(): Promise<boolean> {
+    const args = ['sparse-checkout', 'disable']
+    const output = await this.execGit(args, true)
+    return output.exitCode === 0
+  }
+
   async submoduleForeach(command: string, recursive: boolean): Promise<string> {
     const args = ['submodule', 'foreach']
     if (recursive) {
@@ -427,7 +465,8 @@ class GitCommandManager {
     args: string[],
     allowAllExitCodes = false,
     silent = false,
-    customListeners = {}
+    customListeners = {},
+    stdin: Buffer | undefined = undefined
   ): Promise<GitOutput> {
     fshelper.directoryExistsSync(this.workingDirectory, true)
 
@@ -455,6 +494,7 @@ class GitCommandManager {
       env,
       silent,
       ignoreReturnCode: allowAllExitCodes,
+      input: stdin,
       listeners: mergedListeners
     }
 
