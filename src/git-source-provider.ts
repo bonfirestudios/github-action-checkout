@@ -145,6 +145,33 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
     }
     core.endGroup()
 
+    // Read SparkGit configuration from the commit that we're intending on using
+    core.startGroup('Reading SparkGit configuration')
+    let sparkGitFile = await git.show(settings.commit + ":.sparkgit")
+    if (sparkGitFile) {
+        core.info(`Found SparkGit configuration`)
+        let sparkGitConfiguration = JSON.parse(sparkGitFile)
+        let sparse = sparkGitConfiguration.sparse;
+        if (sparse) {
+            core.info('SparkGit configuration contains sparse rules')
+            let rules = [sparse.base];
+            for (const option of sparse.options) {
+                rules.push(option.disabledPattern)
+            }
+
+            let sparseRules = rules.join('\n')
+            core.info(`Sparse rules ${rules}`)
+            await git.sparseCheckoutSet(sparseRules)
+        } else {
+            core.info('SparkGit configuration does not contains sparse rules, ensuring sparse checkouts are disabled')
+            await git.sparseCheckoutDisable()
+        }
+    } else {
+        core.info('No SparkGit configuration found, ensuring sparse checkouts are disabled')
+        await git.sparseCheckoutDisable()
+    }
+    core.endGroup()
+
     // Checkout info
     core.startGroup('Determining the checkout info')
     const checkoutInfo = await refHelper.getCheckoutInfo(

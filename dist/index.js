@@ -559,10 +559,20 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const os = __webpack_require__(87);
-const events = __webpack_require__(614);
-const child = __webpack_require__(129);
+const os = __importStar(__webpack_require__(87));
+const events = __importStar(__webpack_require__(614));
+const child = __importStar(__webpack_require__(129));
+const path = __importStar(__webpack_require__(622));
+const io = __importStar(__webpack_require__(1));
+const ioUtil = __importStar(__webpack_require__(672));
 /* eslint-disable @typescript-eslint/unbound-method */
 const IS_WINDOWS = process.platform === 'win32';
 /*
@@ -908,6 +918,16 @@ class ToolRunner extends events.EventEmitter {
      */
     exec() {
         return __awaiter(this, void 0, void 0, function* () {
+            // root the tool path if it is unrooted and contains relative pathing
+            if (!ioUtil.isRooted(this.toolPath) &&
+                (this.toolPath.includes('/') ||
+                    (IS_WINDOWS && this.toolPath.includes('\\')))) {
+                // prefer options.cwd if it is specified, however options.cwd may also need to be rooted
+                this.toolPath = path.resolve(process.cwd(), this.options.cwd || process.cwd(), this.toolPath);
+            }
+            // if the tool is only a file name, then resolve it from the PATH
+            // otherwise verify it exists (add extension on Windows if necessary)
+            this.toolPath = yield io.which(this.toolPath, true);
             return new Promise((resolve, reject) => {
                 this._debug(`exec tool: ${this.toolPath}`);
                 this._debug('arguments:');
@@ -996,6 +1016,12 @@ class ToolRunner extends events.EventEmitter {
                         resolve(exitCode);
                     }
                 });
+                if (this.options.input) {
+                    if (!cp.stdin) {
+                        throw new Error('child process missing stdin');
+                    }
+                    cp.stdin.end(this.options.input);
+                }
             });
         });
     }
@@ -7076,6 +7102,32 @@ class GitCommandManager {
             return output.exitCode === 0;
         });
     }
+    show(object) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['show', object];
+            const output = yield this.execGit(args, true);
+            if (output.exitCode === 0) {
+                return output.stdout.trim();
+            }
+            else {
+                return undefined;
+            }
+        });
+    }
+    sparseCheckoutSet(rules) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['sparse-checkout', 'set', '--stdin'];
+            const output = yield this.execGit(args, true, false, Buffer.from(rules, 'utf-8'));
+            return output.exitCode === 0;
+        });
+    }
+    sparseCheckoutDisable() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['sparse-checkout', 'disable'];
+            const output = yield this.execGit(args, true);
+            return output.exitCode === 0;
+        });
+    }
     submoduleForeach(command, recursive) {
         return __awaiter(this, void 0, void 0, function* () {
             const args = ['submodule', 'foreach'];
@@ -7164,7 +7216,7 @@ class GitCommandManager {
             return result;
         });
     }
-    execGit(args, allowAllExitCodes = false, silent = false) {
+    execGit(args, allowAllExitCodes = false, silent = false, stdin = undefined) {
         return __awaiter(this, void 0, void 0, function* () {
             fshelper.directoryExistsSync(this.workingDirectory, true);
             const result = new GitOutput();
@@ -7181,6 +7233,7 @@ class GitCommandManager {
                 env,
                 silent,
                 ignoreReturnCode: allowAllExitCodes,
+                stdin: stdin,
                 listeners: {
                     stdout: (data) => {
                         stdout.push(data.toString());
@@ -7395,6 +7448,33 @@ function getSource(settings) {
             else {
                 const refSpec = refHelper.getRefSpec(settings.ref, settings.commit);
                 yield git.fetch(refSpec, settings.fetchDepth);
+            }
+            core.endGroup();
+            // Read SparkGit configuration from the commit that we're intending on using
+            core.startGroup('Reading SparkGit configuration');
+            let sparkGitFile = yield git.show(settings.commit + ":.sparkgit");
+            if (sparkGitFile) {
+                core.info(`Found SparkGit configuration`);
+                let sparkGitConfiguration = JSON.parse(sparkGitFile);
+                let sparse = sparkGitConfiguration.sparse;
+                if (sparse) {
+                    core.info('SparkGit configuration contains sparse rules');
+                    let rules = [sparse.base];
+                    for (const option of sparse.options) {
+                        rules.push(option.disabledPattern);
+                    }
+                    let sparseRules = rules.join('\n');
+                    core.info(`Sparse rules ${rules}`);
+                    yield git.sparseCheckoutSet(sparseRules);
+                }
+                else {
+                    core.info('SparkGit configuration does not contains sparse rules, ensuring sparse checkouts are disabled');
+                    yield git.sparseCheckoutDisable();
+                }
+            }
+            else {
+                core.info('No SparkGit configuration found, ensuring sparse checkouts are disabled');
+                yield git.sparseCheckoutDisable();
             }
             core.endGroup();
             // Checkout info
@@ -36083,8 +36163,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const tr = __webpack_require__(9);
+const tr = __importStar(__webpack_require__(9));
 /**
  * Exec a command.
  * Output will be streamed to the live console.
