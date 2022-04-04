@@ -766,6 +766,10 @@ async function setup(testName: string): Promise<void> {
       git.env[name] = value
     }),
     shaExists: jest.fn(),
+    show: jest.fn(),
+    sparseCheckoutSet: jest.fn(),
+    sparseCheckoutList: jest.fn(),
+    sparseCheckoutDisable: jest.fn(),
     submoduleForeach: jest.fn(async () => {
       return ''
     }),

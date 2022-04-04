@@ -732,6 +732,39 @@ class GitCommandManager {
             return output.exitCode === 0;
         });
     }
+    show(object) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['show', object];
+            const output = yield this.execGit(args, true);
+            if (output.exitCode === 0) {
+                return output.stdout.trim();
+            }
+            else {
+                return undefined;
+            }
+        });
+    }
+    sparseCheckoutSet(rules) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['sparse-checkout', 'set', '--no-cone', '--stdin'];
+            const output = yield this.execGit(args, true, false, {}, Buffer.from(rules, 'utf-8'));
+            return output.exitCode === 0;
+        });
+    }
+    sparseCheckoutList() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['sparse-checkout', 'list'];
+            const output = yield this.execGit(args, true);
+            return output.exitCode === 0;
+        });
+    }
+    sparseCheckoutDisable() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['sparse-checkout', 'disable'];
+            const output = yield this.execGit(args, true);
+            return output.exitCode === 0;
+        });
+    }
     submoduleForeach(command, recursive) {
         return __awaiter(this, void 0, void 0, function* () {
             const args = ['submodule', 'foreach'];
@@ -820,7 +853,7 @@ class GitCommandManager {
             return result;
         });
     }
-    execGit(args, allowAllExitCodes = false, silent = false, customListeners = {}) {
+    execGit(args, allowAllExitCodes = false, silent = false, customListeners = {}, stdin = undefined) {
         return __awaiter(this, void 0, void 0, function* () {
             fshelper.directoryExistsSync(this.workingDirectory, true);
             const result = new GitOutput();
@@ -843,6 +876,7 @@ class GitCommandManager {
                 env,
                 silent,
                 ignoreReturnCode: allowAllExitCodes,
+                stdin: stdin,
                 listeners: mergedListeners
             };
             result.exitCode = yield exec.exec(`"${this.gitPath}"`, args, options);
@@ -1214,18 +1248,39 @@ function getSource(settings) {
                 yield git.fetch(refSpec, settings.fetchDepth);
             }
             core.endGroup();
+            // Read SparkGit configuration from the commit that we're intending on using
+            core.startGroup('Reading SparkGit configuration');
+            let sparkGitFile = yield git.show(settings.commit + ':.sparkgit');
+            if (sparkGitFile) {
+                core.info(`Found SparkGit configuration`);
+                let sparkGitConfiguration = JSON.parse(sparkGitFile);
+                let sparse = sparkGitConfiguration.sparse;
+                if (sparse) {
+                    core.info('SparkGit configuration contains sparse rules');
+                    let rules = [sparse.base];
+                    for (const option of sparse.options) {
+                        rules.push(option.disabledPattern);
+                    }
+                    let sparseRules = rules.join('\n');
+                    core.info(`Sparse rules ${sparseRules}`);
+                    yield git.sparseCheckoutSet(sparseRules);
+                    core.info(`Reading back sparse rules`);
+                    yield git.sparseCheckoutList();
+                }
+                else {
+                    core.info('SparkGit configuration does not contains sparse rules, ensuring sparse checkouts are disabled');
+                    yield git.sparseCheckoutDisable();
+                }
+            }
+            else {
+                core.info('No SparkGit configuration found, ensuring sparse checkouts are disabled');
+                yield git.sparseCheckoutDisable();
+            }
+            core.endGroup();
             // Checkout info
             core.startGroup('Determining the checkout info');
             const checkoutInfo = yield refHelper.getCheckoutInfo(git, settings.ref, settings.commit);
             core.endGroup();
-            // LFS fetch
-            // Explicit lfs-fetch to avoid slow checkout (fetches one lfs object at a time).
-            // Explicit lfs fetch will fetch lfs objects in parallel.
-            if (settings.lfs) {
-                core.startGroup('Fetching LFS objects');
-                yield git.lfsFetch(checkoutInfo.startPoint || checkoutInfo.ref);
-                core.endGroup();
-            }
             // Checkout
             core.startGroup('Checking out the ref');
             yield git.checkout(checkoutInfo.ref, checkoutInfo.startPoint);
