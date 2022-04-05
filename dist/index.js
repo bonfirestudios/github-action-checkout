@@ -7233,7 +7233,7 @@ class GitCommandManager {
                 env,
                 silent,
                 ignoreReturnCode: allowAllExitCodes,
-                stdin: stdin,
+                input: stdin,
                 listeners: {
                     stdout: (data) => {
                         stdout.push(data.toString());
@@ -7464,7 +7464,7 @@ function getSource(settings) {
                         rules.push(option.disabledPattern);
                     }
                     let sparseRules = rules.join('\n');
-                    core.info(`Sparse rules ${rules}`);
+                    core.info(`Sparse rules ${sparseRules}`);
                     yield git.sparseCheckoutSet(sparseRules);
                 }
                 else {

@@ -442,7 +442,7 @@ class GitCommandManager {
       env,
       silent,
       ignoreReturnCode: allowAllExitCodes,
-      stdin: stdin,
+      input: stdin,
       listeners: {
         stdout: (data: Buffer) => {
           stdout.push(data.toString())

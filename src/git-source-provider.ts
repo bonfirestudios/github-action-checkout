@@ -160,7 +160,7 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
             }
 
             let sparseRules = rules.join('\n')
-            core.info(`Sparse rules ${rules}`)
+            core.info(`Sparse rules ${sparseRules}`)
             await git.sparseCheckoutSet(sparseRules)
         } else {
             core.info('SparkGit configuration does not contains sparse rules, ensuring sparse checkouts are disabled')
