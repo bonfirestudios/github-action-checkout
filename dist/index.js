@@ -7121,10 +7121,10 @@ class GitCommandManager {
             return output.exitCode === 0;
         });
     }
-    sparseCheckoutList(rules) {
+    sparseCheckoutList() {
         return __awaiter(this, void 0, void 0, function* () {
             const args = ['sparse-checkout', 'list'];
-            const output = yield this.execGit(args, true, false, Buffer.from(rules, 'utf-8'));
+            const output = yield this.execGit(args, true);
             return output.exitCode === 0;
         });
     }
@@ -7473,7 +7473,7 @@ function getSource(settings) {
                     let sparseRules = rules.join('\n');
                     core.info(`Sparse rules ${sparseRules}`);
                     yield git.sparseCheckoutSet(sparseRules);
-                    core.info('listing applied rules');
+                    core.info(`Reading back sparse rules`);
                     yield git.sparseCheckoutList();
                 }
                 else {
