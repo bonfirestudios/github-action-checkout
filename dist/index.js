@@ -7116,7 +7116,7 @@ class GitCommandManager {
     }
     sparseCheckoutSet(rules) {
         return __awaiter(this, void 0, void 0, function* () {
-            const args = ['sparse-checkout', 'set', '--stdin'];
+            const args = ['sparse-checkout', 'set', '--no-cone', '--stdin'];
             const output = yield this.execGit(args, true, false, Buffer.from(rules, 'utf-8'));
             return output.exitCode === 0;
         });
