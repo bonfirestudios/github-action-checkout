@@ -7121,6 +7121,13 @@ class GitCommandManager {
             return output.exitCode === 0;
         });
     }
+    sparseCheckoutList(rules) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['sparse-checkout', 'list'];
+            const output = yield this.execGit(args, true, false, Buffer.from(rules, 'utf-8'));
+            return output.exitCode === 0;
+        });
+    }
     sparseCheckoutDisable() {
         return __awaiter(this, void 0, void 0, function* () {
             const args = ['sparse-checkout', 'disable'];
@@ -7466,6 +7473,8 @@ function getSource(settings) {
                     let sparseRules = rules.join('\n');
                     core.info(`Sparse rules ${sparseRules}`);
                     yield git.sparseCheckoutSet(sparseRules);
+                    core.info('listing applied rules');
+                    yield git.sparseCheckoutList();
                 }
                 else {
                     core.info('SparkGit configuration does not contains sparse rules, ensuring sparse checkouts are disabled');
