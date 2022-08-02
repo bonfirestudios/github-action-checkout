@@ -7490,14 +7490,6 @@ function getSource(settings) {
             core.startGroup('Determining the checkout info');
             const checkoutInfo = yield refHelper.getCheckoutInfo(git, settings.ref, settings.commit);
             core.endGroup();
-            // LFS fetch
-            // Explicit lfs-fetch to avoid slow checkout (fetches one lfs object at a time).
-            // Explicit lfs fetch will fetch lfs objects in parallel.
-            if (settings.lfs) {
-                core.startGroup('Fetching LFS objects');
-                yield git.lfsFetch(checkoutInfo.startPoint || checkoutInfo.ref);
-                core.endGroup();
-            }
             // Checkout
             core.startGroup('Checking out the ref');
             yield git.checkout(checkoutInfo.ref, checkoutInfo.startPoint);
