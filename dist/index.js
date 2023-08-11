@@ -1250,8 +1250,7 @@ function getSource(settings) {
             core.endGroup();
             // Read SparkGit configuration from the commit that we're intending on using
             core.startGroup('Reading SparkGit configuration');
-            const commit = settings.commit ? settings.commit : settings.ref;
-            const sparkGitFile = yield git.show(commit + ':.sparkgit');
+            let sparkGitFile = yield git.show(settings.commit + ':.sparkgit');
             if (sparkGitFile) {
                 core.info(`Found SparkGit configuration`);
                 let sparkGitConfiguration = JSON.parse(sparkGitFile);
