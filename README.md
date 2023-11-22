@@ -101,6 +101,9 @@ When Git 2.18 or higher is not in your PATH, falls back to the REST API to downl
     # running from unless specified. Example URLs are https://github.com or
     # https://my-ghes-server.example.com
     github-server-url: ''
+
+    # An optional file to use that will be fed to sparse-checkout set
+    sparse-file: ''
 ```
 <!-- end usage -->
 

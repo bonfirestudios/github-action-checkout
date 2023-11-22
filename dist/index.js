@@ -1248,39 +1248,53 @@ function getSource(settings) {
                 yield git.fetch(refSpec, settings.fetchDepth);
             }
             core.endGroup();
-            // Read SparkGit configuration from the commit that we're intending on using
-            core.startGroup('Reading SparkGit configuration');
             let commit = settings.commit;
             if (!commit) {
                 commit = yield git.revParse(`origin/${settings.ref}`);
             }
-            const sparkGitFile = yield git.show(commit + ':.sparkgit');
-            if (sparkGitFile) {
-                core.info(`Found SparkGit configuration`);
-                let sparkGitConfiguration = JSON.parse(sparkGitFile);
-                let sparse = sparkGitConfiguration.sparse;
-                if (sparse) {
-                    core.info('SparkGit configuration contains sparse rules');
-                    let rules = [sparse.base];
-                    for (const option of sparse.options) {
-                        rules.push(option.disabledPattern);
-                    }
-                    let sparseRules = rules.join('\n');
+            if (settings.sparseFile) {
+                const sparseRules = yield git.show(commit + `:${settings.sparseFile}`);
+                if (sparseRules) {
                     core.info(`Sparse rules ${sparseRules}`);
                     yield git.sparseCheckoutSet(sparseRules);
                     core.info(`Reading back sparse rules`);
                     yield git.sparseCheckoutList();
                 }
                 else {
-                    core.info('SparkGit configuration does not contains sparse rules, ensuring sparse checkouts are disabled');
-                    yield git.sparseCheckoutDisable();
+                    throw new Error(`Sparse file '${settings.sparseFile}' not found.`);
                 }
             }
             else {
-                core.info('No SparkGit configuration found, ensuring sparse checkouts are disabled');
-                yield git.sparseCheckoutDisable();
+                // Read SparkGit configuration from the commit that we're intending on using
+                core.startGroup('Reading SparkGit configuration');
+                const sparkGitFile = yield git.show(commit + ':.sparkgit');
+                if (sparkGitFile) {
+                    core.info(`Found SparkGit configuration`);
+                    let sparkGitConfiguration = JSON.parse(sparkGitFile);
+                    let sparse = sparkGitConfiguration.sparse;
+                    if (sparse) {
+                        core.info('SparkGit configuration contains sparse rules');
+                        let rules = [sparse.base];
+                        for (const option of sparse.options) {
+                            rules.push(option.disabledPattern);
+                        }
+                        let sparseRules = rules.join('\n');
+                        core.info(`Sparse rules ${sparseRules}`);
+                        yield git.sparseCheckoutSet(sparseRules);
+                        core.info(`Reading back sparse rules`);
+                        yield git.sparseCheckoutList();
+                    }
+                    else {
+                        core.info('SparkGit configuration does not contains sparse rules, ensuring sparse checkouts are disabled');
+                        yield git.sparseCheckoutDisable();
+                    }
+                }
+                else {
+                    core.info('No SparkGit configuration found, ensuring sparse checkouts are disabled');
+                    yield git.sparseCheckoutDisable();
+                }
+                core.endGroup();
             }
-            core.endGroup();
             // Checkout info
             core.startGroup('Determining the checkout info');
             const checkoutInfo = yield refHelper.getCheckoutInfo(git, settings.ref, settings.commit);
@@ -1757,6 +1771,9 @@ function getInputs() {
         // Determine the GitHub URL that the repository is being hosted from
         result.githubServerUrl = core.getInput('github-server-url');
         core.debug(`GitHub Host URL = ${result.githubServerUrl}`);
+        // Determine the GitHub URL that the repository is being hosted from
+        result.sparseFile = core.getInput('sparse-file');
+        core.debug(`Sparse File = ${result.sparseFile}`);
         return result;
     });
 }
