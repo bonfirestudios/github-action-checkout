@@ -21,6 +21,7 @@ let git: IGitCommandManager & {env: {[key: string]: string}}
 let settings: IGitSourceSettings
 let sshPath: string
 let githubServerUrl: string
+let sparseFile: string
 
 describe('git-auth-helper tests', () => {
   beforeAll(async () => {
@@ -815,7 +816,8 @@ async function setup(testName: string): Promise<void> {
     sshStrict: true,
     workflowOrganizationId: 123456,
     setSafeDirectory: true,
-    githubServerUrl: githubServerUrl
+    githubServerUrl: githubServerUrl,
+    sparseFile: sparseFile
   }
 }
 
