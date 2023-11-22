@@ -1,6 +1,5 @@
 import * as core from '@actions/core'
 import * as fsHelper from './fs-helper'
-import * as fs from 'fs'
 import * as gitAuthHelper from './git-auth-helper'
 import * as gitCommandManager from './git-command-manager'
 import * as gitDirectoryHelper from './git-directory-helper'
@@ -174,9 +173,14 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
     }
     core.endGroup()
 
+    let commit = settings.commit
+    if (!commit) {
+      commit = await git.revParse(`origin/${settings.ref}`)
+    }
+
     if (settings.sparseFile) {
-      if (fsHelper.fileExistsSync(settings.sparseFile)) {
-        const sparseRules = fs.readFileSync(settings.sparseFile).toString()
+      const sparseRules = await git.show(commit + `:${settings.sparseFile}`)
+      if (sparseRules) {
         core.info(`Sparse rules ${sparseRules}`)
         await git.sparseCheckoutSet(sparseRules)
         core.info(`Reading back sparse rules`)
@@ -189,10 +193,6 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
     } else {
       // Read SparkGit configuration from the commit that we're intending on using
       core.startGroup('Reading SparkGit configuration')
-      let commit = settings.commit
-      if (!commit) {
-        commit = await git.revParse(`origin/${settings.ref}`)
-      }
       const sparkGitFile = await git.show(commit + ':.sparkgit')
       if (sparkGitFile) {
         core.info(`Found SparkGit configuration`)
