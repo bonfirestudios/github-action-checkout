@@ -130,5 +130,9 @@ export async function getInputs(): Promise<IGitSourceSettings> {
   result.githubServerUrl = core.getInput('github-server-url')
   core.debug(`GitHub Host URL = ${result.githubServerUrl}`)
 
+  // Determine the GitHub URL that the repository is being hosted from
+  result.sparseFile = core.getInput('sparse-file')
+  core.debug(`Sparse File = ${result.sparseFile}`)
+
   return result
 }
