@@ -186,9 +186,7 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
         core.info(`Reading back sparse rules`)
         await git.sparseCheckoutList()
       } else {
-        throw new Error(
-          `Sparse file '${settings.sparseFile}' not found.`
-        )
+        throw new Error(`Sparse file '${settings.sparseFile}' not found.`)
       }
     } else {
       // Read SparkGit configuration from the commit that we're intending on using
