@@ -199,30 +199,14 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
 
     // Sparse checkout file
     if (settings.sparseCheckoutFile) {
-      let commit = settings.commit
-      if (!commit) {
-        core.startGroup(`Retrieving commit for ref 'origin/${settings.ref}'`)
-        commit = await git.revParse(`origin/${settings.ref}`)
-        if (!commit) {
-          throw new Error(
-            `Unable to find commit for ref 'origin/${settings.ref}'`
-          )
-        }
-        core.endGroup()
-      }
+      const object = `${checkoutInfo.ref}:${settings.sparseCheckoutFile}`
 
-      core.startGroup(
-        `Retrieving sparse checkout rules from '${commit}:${settings.sparseCheckoutFile}'`
-      )
-      const sparseCheckoutFileContent = await git.show(
-        `${commit}:${settings.sparseCheckoutFile}`
-      )
+      core.startGroup(`Retrieving sparse checkout rules from '${object}'`)
+      const sparseCheckoutFileContent = await git.show(object)
       if (sparseCheckoutFileContent) {
         settings.sparseCheckout = sparseCheckoutFileContent.split('\n')
       } else {
-        throw new Error(
-          `Unable to read sparse checkout rules from '${commit}:${settings.sparseCheckoutFile}'`
-        )
+        throw new Error(`Unable to read sparse checkout rules from '${object}'`)
       }
       core.endGroup()
     }
