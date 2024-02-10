@@ -1288,7 +1288,11 @@ function getSource(settings) {
             core.endGroup();
             // Sparse checkout file
             if (settings.sparseCheckoutFile) {
-                const object = `${checkoutInfo.ref}:${settings.sparseCheckoutFile}`;
+                let ref = settings.commit;
+                if (!ref) {
+                    ref = checkoutInfo.startPoint;
+                }
+                const object = `${ref}:${settings.sparseCheckoutFile}`;
                 core.startGroup(`Retrieving sparse checkout rules from '${object}'`);
                 const sparseCheckoutFileContent = yield git.show(object);
                 if (sparseCheckoutFileContent) {
