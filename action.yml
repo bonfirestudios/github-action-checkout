@@ -63,6 +63,11 @@ inputs:
       Do a sparse checkout on given patterns.
       Each pattern should be separated with new lines.
     default: null
+  sparse-checkout-file:
+    description: >
+      Do a sparse checkout on given patterns from a file.
+      Each pattern in the file should be separated with new lines.
+    default: null
   sparse-checkout-cone-mode:
     description: >
       Specifies whether to use cone-mode when doing a sparse checkout.

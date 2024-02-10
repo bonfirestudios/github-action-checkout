@@ -97,6 +97,12 @@ export async function getInputs(): Promise<IGitSourceSettings> {
     core.debug(`sparse checkout = ${result.sparseCheckout}`)
   }
 
+  const sparseCheckoutFile = core.getInput('sparse-checkout-file')
+  if (sparseCheckoutFile) {
+    result.sparseCheckoutFile = sparseCheckoutFile
+    core.debug(`sparse checkout file = ${result.sparseCheckoutFile}`)
+  }
+
   result.sparseCheckoutConeMode =
     (core.getInput('sparse-checkout-cone-mode') || 'true').toUpperCase() ===
     'TRUE'

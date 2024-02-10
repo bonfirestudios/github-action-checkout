@@ -40,6 +40,11 @@ export interface IGitSourceSettings {
   sparseCheckout: string[]
 
   /**
+   * The name of the file that contains the sparse checkout patterns
+   */
+  sparseCheckoutFile: string
+
+  /**
    * Indicates whether to use cone mode in the sparse checkout (if any)
    */
   sparseCheckoutConeMode: boolean

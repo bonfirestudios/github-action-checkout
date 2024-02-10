@@ -18,6 +18,7 @@ export interface IGitCommandManager {
   branchExists(remote: boolean, pattern: string): Promise<boolean>
   branchList(remote: boolean): Promise<string[]>
   sparseCheckout(sparseCheckout: string[]): Promise<void>
+  sparseCheckoutDisable(): Promise<void>
   sparseCheckoutNonConeMode(sparseCheckout: string[]): Promise<void>
   checkout(ref: string, startPoint: string): Promise<void>
   checkoutDetach(): Promise<void>
@@ -49,6 +50,7 @@ export interface IGitCommandManager {
   revParse(ref: string): Promise<string>
   setEnvironmentVariable(name: string, value: string): void
   shaExists(sha: string): Promise<boolean>
+  show(object: string): Promise<string | undefined>
   submoduleForeach(command: string, recursive: boolean): Promise<string>
   submoduleSync(recursive: boolean): Promise<void>
   submoduleUpdate(fetchDepth: number, recursive: boolean): Promise<void>
@@ -173,6 +175,10 @@ class GitCommandManager {
 
   async sparseCheckout(sparseCheckout: string[]): Promise<void> {
     await this.execGit(['sparse-checkout', 'set', ...sparseCheckout])
+  }
+
+  async sparseCheckoutDisable(): Promise<void> {
+    await this.execGit(['sparse-checkout', 'disable'])
   }
 
   async sparseCheckoutNonConeMode(sparseCheckout: string[]): Promise<void> {
@@ -376,6 +382,16 @@ class GitCommandManager {
     const args = ['rev-parse', '--verify', '--quiet', `${sha}^{object}`]
     const output = await this.execGit(args, true)
     return output.exitCode === 0
+  }
+
+  async show(object: string): Promise<string | undefined> {
+    const args = ['show', object]
+    const output = await this.execGit(args, true)
+    if (output.exitCode === 0) {
+      return output.stdout.trim()
+    } else {
+      return undefined
+    }
   }
 
   async submoduleForeach(command: string, recursive: boolean): Promise<string> {

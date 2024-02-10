@@ -728,6 +728,7 @@ async function setup(testName: string): Promise<void> {
     branchExists: jest.fn(),
     branchList: jest.fn(),
     sparseCheckout: jest.fn(),
+    sparseCheckoutDisable: jest.fn(),
     sparseCheckoutNonConeMode: jest.fn(),
     checkout: jest.fn(),
     checkoutDetach: jest.fn(),
@@ -768,6 +769,7 @@ async function setup(testName: string): Promise<void> {
       git.env[name] = value
     }),
     shaExists: jest.fn(),
+    show: jest.fn(),
     submoduleForeach: jest.fn(async () => {
       return ''
     }),
@@ -804,6 +806,7 @@ async function setup(testName: string): Promise<void> {
     commit: '',
     filter: undefined,
     sparseCheckout: [],
+    sparseCheckoutFile: '',
     sparseCheckoutConeMode: true,
     fetchDepth: 1,
     fetchTags: false,

@@ -581,6 +581,11 @@ class GitCommandManager {
             yield this.execGit(['sparse-checkout', 'set', ...sparseCheckout]);
         });
     }
+    sparseCheckoutDisable() {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.execGit(['sparse-checkout', 'disable']);
+        });
+    }
     sparseCheckoutNonConeMode(sparseCheckout) {
         return __awaiter(this, void 0, void 0, function* () {
             yield this.execGit(['config', 'core.sparseCheckout', 'true']);
@@ -755,6 +760,18 @@ class GitCommandManager {
             const args = ['rev-parse', '--verify', '--quiet', `${sha}^{object}`];
             const output = yield this.execGit(args, true);
             return output.exitCode === 0;
+        });
+    }
+    show(object) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['show', object];
+            const output = yield this.execGit(args, true);
+            if (output.exitCode === 0) {
+                return output.stdout.trim();
+            }
+            else {
+                return undefined;
+            }
         });
     }
     submoduleForeach(command, recursive) {
@@ -1247,7 +1264,7 @@ function getSource(settings) {
             if (settings.filter) {
                 fetchOptions.filter = settings.filter;
             }
-            else if (settings.sparseCheckout) {
+            else if (settings.sparseCheckout || settings.sparseCheckoutFile) {
                 fetchOptions.filter = 'blob:none';
             }
             if (settings.fetchDepth <= 0) {
@@ -1272,13 +1289,25 @@ function getSource(settings) {
             core.startGroup('Determining the checkout info');
             const checkoutInfo = yield refHelper.getCheckoutInfo(git, settings.ref, settings.commit);
             core.endGroup();
-            // LFS fetch
-            // Explicit lfs-fetch to avoid slow checkout (fetches one lfs object at a time).
-            // Explicit lfs fetch will fetch lfs objects in parallel.
-            // For sparse checkouts, let `checkout` fetch the needed objects lazily.
-            if (settings.lfs && !settings.sparseCheckout) {
-                core.startGroup('Fetching LFS objects');
-                yield git.lfsFetch(checkoutInfo.startPoint || checkoutInfo.ref);
+            // Sparse checkout file
+            if (settings.sparseCheckoutFile) {
+                let commit = settings.commit;
+                if (!commit) {
+                    core.startGroup(`Retrieving commit for ref 'origin/${settings.ref}'`);
+                    commit = yield git.revParse(`origin/${settings.ref}`);
+                    if (!commit) {
+                        throw new Error(`Unable to find commit for ref 'origin/${settings.ref}'`);
+                    }
+                    core.endGroup();
+                }
+                core.startGroup(`Retrieving sparse checkout rules from '${commit}:${settings.sparseCheckoutFile}'`);
+                const sparseCheckoutFileContent = yield git.show(`${commit}:${settings.sparseCheckoutFile}`);
+                if (sparseCheckoutFileContent) {
+                    settings.sparseCheckout = sparseCheckoutFileContent.split('\n');
+                }
+                else {
+                    throw new Error(`Unable to read sparse checkout rules from '${commit}:${settings.sparseCheckoutFile}'`);
+                }
                 core.endGroup();
             }
             // Sparse checkout
@@ -1290,6 +1319,20 @@ function getSource(settings) {
                 else {
                     yield git.sparseCheckoutNonConeMode(settings.sparseCheckout);
                 }
+                core.endGroup();
+            }
+            else {
+                core.startGroup('Disabling sparse checkout');
+                yield git.sparseCheckoutDisable();
+                core.endGroup();
+            }
+            // LFS fetch
+            // Explicit lfs-fetch to avoid slow checkout (fetches one lfs object at a time).
+            // Explicit lfs fetch will fetch lfs objects in parallel.
+            // For sparse checkouts, let `checkout` fetch the needed objects lazily.
+            if (settings.lfs && !settings.sparseCheckout) {
+                core.startGroup('Fetching LFS objects');
+                yield git.lfsFetch(checkoutInfo.startPoint || checkoutInfo.ref);
                 core.endGroup();
             }
             // Checkout
@@ -1738,6 +1781,11 @@ function getInputs() {
         if (sparseCheckout.length) {
             result.sparseCheckout = sparseCheckout;
             core.debug(`sparse checkout = ${result.sparseCheckout}`);
+        }
+        const sparseCheckoutFile = core.getInput('sparse-checkout-file');
+        if (sparseCheckoutFile) {
+            result.sparseCheckoutFile = sparseCheckoutFile;
+            core.debug(`sparse checkout file = ${result.sparseCheckoutFile}`);
         }
         result.sparseCheckoutConeMode =
             (core.getInput('sparse-checkout-cone-mode') || 'true').toUpperCase() ===
@@ -4125,6 +4173,25 @@ exports["default"] = _default;
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -4135,7 +4202,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const tr = __nccwpck_require__(8159);
+exports.getExecOutput = exports.exec = void 0;
+const string_decoder_1 = __nccwpck_require__(1576);
+const tr = __importStar(__nccwpck_require__(8159));
 /**
  * Exec a command.
  * Output will be streamed to the live console.
@@ -4160,6 +4229,51 @@ function exec(commandLine, args, options) {
     });
 }
 exports.exec = exec;
+/**
+ * Exec a command and get the output.
+ * Output will be streamed to the live console.
+ * Returns promise with the exit code and collected stdout and stderr
+ *
+ * @param     commandLine           command to execute (can include additional args). Must be correctly escaped.
+ * @param     args                  optional arguments for tool. Escaping is handled by the lib.
+ * @param     options               optional exec options.  See ExecOptions
+ * @returns   Promise<ExecOutput>   exit code, stdout, and stderr
+ */
+function getExecOutput(commandLine, args, options) {
+    var _a, _b;
+    return __awaiter(this, void 0, void 0, function* () {
+        let stdout = '';
+        let stderr = '';
+        //Using string decoder covers the case where a mult-byte character is split
+        const stdoutDecoder = new string_decoder_1.StringDecoder('utf8');
+        const stderrDecoder = new string_decoder_1.StringDecoder('utf8');
+        const originalStdoutListener = (_a = options === null || options === void 0 ? void 0 : options.listeners) === null || _a === void 0 ? void 0 : _a.stdout;
+        const originalStdErrListener = (_b = options === null || options === void 0 ? void 0 : options.listeners) === null || _b === void 0 ? void 0 : _b.stderr;
+        const stdErrListener = (data) => {
+            stderr += stderrDecoder.write(data);
+            if (originalStdErrListener) {
+                originalStdErrListener(data);
+            }
+        };
+        const stdOutListener = (data) => {
+            stdout += stdoutDecoder.write(data);
+            if (originalStdoutListener) {
+                originalStdoutListener(data);
+            }
+        };
+        const listeners = Object.assign(Object.assign({}, options === null || options === void 0 ? void 0 : options.listeners), { stdout: stdOutListener, stderr: stdErrListener });
+        const exitCode = yield exec(commandLine, args, Object.assign(Object.assign({}, options), { listeners }));
+        //flush any remaining characters
+        stdout += stdoutDecoder.end();
+        stderr += stderrDecoder.end();
+        return {
+            exitCode,
+            stdout,
+            stderr
+        };
+    });
+}
+exports.getExecOutput = getExecOutput;
 //# sourceMappingURL=exec.js.map
 
 /***/ }),
@@ -4169,6 +4283,25 @@ exports.exec = exec;
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -4179,9 +4312,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const os = __nccwpck_require__(2037);
-const events = __nccwpck_require__(2361);
-const child = __nccwpck_require__(2081);
+exports.argStringToArray = exports.ToolRunner = void 0;
+const os = __importStar(__nccwpck_require__(2037));
+const events = __importStar(__nccwpck_require__(2361));
+const child = __importStar(__nccwpck_require__(2081));
+const path = __importStar(__nccwpck_require__(1017));
+const io = __importStar(__nccwpck_require__(7436));
+const ioUtil = __importStar(__nccwpck_require__(1962));
+const timers_1 = __nccwpck_require__(9512);
 /* eslint-disable @typescript-eslint/unbound-method */
 const IS_WINDOWS = process.platform === 'win32';
 /*
@@ -4251,11 +4389,12 @@ class ToolRunner extends events.EventEmitter {
                 s = s.substring(n + os.EOL.length);
                 n = s.indexOf(os.EOL);
             }
-            strBuffer = s;
+            return s;
         }
         catch (err) {
             // streaming lines to console is best effort.  Don't fail a build.
             this._debug(`error processing line. Failed with error ${err}`);
+            return '';
         }
     }
     _getSpawnFileName() {
@@ -4527,7 +4666,17 @@ class ToolRunner extends events.EventEmitter {
      */
     exec() {
         return __awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve, reject) => {
+            // root the tool path if it is unrooted and contains relative pathing
+            if (!ioUtil.isRooted(this.toolPath) &&
+                (this.toolPath.includes('/') ||
+                    (IS_WINDOWS && this.toolPath.includes('\\')))) {
+                // prefer options.cwd if it is specified, however options.cwd may also need to be rooted
+                this.toolPath = path.resolve(process.cwd(), this.options.cwd || process.cwd(), this.toolPath);
+            }
+            // if the tool is only a file name, then resolve it from the PATH
+            // otherwise verify it exists (add extension on Windows if necessary)
+            this.toolPath = yield io.which(this.toolPath, true);
+            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 this._debug(`exec tool: ${this.toolPath}`);
                 this._debug('arguments:');
                 for (const arg of this.args) {
@@ -4541,9 +4690,12 @@ class ToolRunner extends events.EventEmitter {
                 state.on('debug', (message) => {
                     this._debug(message);
                 });
+                if (this.options.cwd && !(yield ioUtil.exists(this.options.cwd))) {
+                    return reject(new Error(`The cwd: ${this.options.cwd} does not exist!`));
+                }
                 const fileName = this._getSpawnFileName();
                 const cp = child.spawn(fileName, this._getSpawnArgs(optionsNonNull), this._getSpawnOptions(this.options, fileName));
-                const stdbuffer = '';
+                let stdbuffer = '';
                 if (cp.stdout) {
                     cp.stdout.on('data', (data) => {
                         if (this.options.listeners && this.options.listeners.stdout) {
@@ -4552,14 +4704,14 @@ class ToolRunner extends events.EventEmitter {
                         if (!optionsNonNull.silent && optionsNonNull.outStream) {
                             optionsNonNull.outStream.write(data);
                         }
-                        this._processLineBuffer(data, stdbuffer, (line) => {
+                        stdbuffer = this._processLineBuffer(data, stdbuffer, (line) => {
                             if (this.options.listeners && this.options.listeners.stdline) {
                                 this.options.listeners.stdline(line);
                             }
                         });
                     });
                 }
-                const errbuffer = '';
+                let errbuffer = '';
                 if (cp.stderr) {
                     cp.stderr.on('data', (data) => {
                         state.processStderr = true;
@@ -4574,7 +4726,7 @@ class ToolRunner extends events.EventEmitter {
                                 : optionsNonNull.outStream;
                             s.write(data);
                         }
-                        this._processLineBuffer(data, errbuffer, (line) => {
+                        errbuffer = this._processLineBuffer(data, errbuffer, (line) => {
                             if (this.options.listeners && this.options.listeners.errline) {
                                 this.options.listeners.errline(line);
                             }
@@ -4615,7 +4767,13 @@ class ToolRunner extends events.EventEmitter {
                         resolve(exitCode);
                     }
                 });
-            });
+                if (this.options.input) {
+                    if (!cp.stdin) {
+                        throw new Error('child process missing stdin');
+                    }
+                    cp.stdin.end(this.options.input);
+                }
+            }));
         });
     }
 }
@@ -4701,7 +4859,7 @@ class ExecState extends events.EventEmitter {
             this._setResult();
         }
         else if (this.processExited) {
-            this.timeout = setTimeout(ExecState.HandleTimeout, this.delay, this);
+            this.timeout = timers_1.setTimeout(ExecState.HandleTimeout, this.delay, this);
         }
     }
     _debug(message) {
@@ -18205,6 +18363,22 @@ module.exports = require("punycode");
 
 "use strict";
 module.exports = require("stream");
+
+/***/ }),
+
+/***/ 1576:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("string_decoder");
+
+/***/ }),
+
+/***/ 9512:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("timers");
 
 /***/ }),
 

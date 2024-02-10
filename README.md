@@ -82,6 +82,11 @@ Please refer to the [release page](https://github.com/actions/checkout/releases/
     # Default: null
     sparse-checkout: ''
 
+    # Do a sparse checkout on given patterns from a file. Each pattern in the file
+    # should be separated with new lines.
+    # Default: null
+    sparse-checkout-file: ''
+
     # Specifies whether to use cone-mode when doing a sparse checkout.
     # Default: true
     sparse-checkout-cone-mode: ''

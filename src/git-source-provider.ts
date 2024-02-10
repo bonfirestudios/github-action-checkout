@@ -162,7 +162,7 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
 
     if (settings.filter) {
       fetchOptions.filter = settings.filter
-    } else if (settings.sparseCheckout) {
+    } else if (settings.sparseCheckout || settings.sparseCheckoutFile) {
       fetchOptions.filter = 'blob:none'
     }
 
@@ -197,13 +197,25 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
     )
     core.endGroup()
 
-    // LFS fetch
-    // Explicit lfs-fetch to avoid slow checkout (fetches one lfs object at a time).
-    // Explicit lfs fetch will fetch lfs objects in parallel.
-    // For sparse checkouts, let `checkout` fetch the needed objects lazily.
-    if (settings.lfs && !settings.sparseCheckout) {
-      core.startGroup('Fetching LFS objects')
-      await git.lfsFetch(checkoutInfo.startPoint || checkoutInfo.ref)
+    // Sparse checkout file
+    if (settings.sparseCheckoutFile) {
+      let commit = settings.commit
+      if (!commit) {
+        core.startGroup(`Retrieving commit for ref 'origin/${settings.ref}'`)
+        commit = await git.revParse(`origin/${settings.ref}`)
+        if (!commit) {
+          throw new Error(`Unable to find commit for ref 'origin/${settings.ref}'`)
+        }
+        core.endGroup()
+      }
+
+      core.startGroup(`Retrieving sparse checkout rules from '${commit}:${settings.sparseCheckoutFile}'`)
+      const sparseCheckoutFileContent = await git.show(`${commit}:${settings.sparseCheckoutFile}`)
+      if (sparseCheckoutFileContent) {
+        settings.sparseCheckout = sparseCheckoutFileContent.split('\n');
+      } else {
+        throw new Error(`Unable to read sparse checkout rules from '${commit}:${settings.sparseCheckoutFile}'`);
+      }
       core.endGroup()
     }
 
@@ -215,6 +227,20 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
       } else {
         await git.sparseCheckoutNonConeMode(settings.sparseCheckout)
       }
+      core.endGroup()
+    } else {
+      core.startGroup('Disabling sparse checkout')
+      await git.sparseCheckoutDisable()
+      core.endGroup()
+    }
+
+    // LFS fetch
+    // Explicit lfs-fetch to avoid slow checkout (fetches one lfs object at a time).
+    // Explicit lfs fetch will fetch lfs objects in parallel.
+    // For sparse checkouts, let `checkout` fetch the needed objects lazily.
+    if (settings.lfs && !settings.sparseCheckout) {
+      core.startGroup('Fetching LFS objects')
+      await git.lfsFetch(checkoutInfo.startPoint || checkoutInfo.ref)
       core.endGroup()
     }
 
