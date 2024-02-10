@@ -78,6 +78,6 @@ inputs:
     description: An optional file to use that will be fed to sparse-checkout set
     required: false
 runs:
-  using: node16
+  using: node20
   main: dist/index.js
   post: dist/index.js
