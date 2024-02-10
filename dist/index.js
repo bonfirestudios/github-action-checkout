@@ -470,7 +470,6 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createCommandManager = exports.MinimumGitVersion = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const exec = __importStar(__nccwpck_require__(1514));
-const fs = __importStar(__nccwpck_require__(7147));
 const fshelper = __importStar(__nccwpck_require__(7219));
 const io = __importStar(__nccwpck_require__(7436));
 const path = __importStar(__nccwpck_require__(1017));
@@ -588,14 +587,12 @@ class GitCommandManager {
     }
     sparseCheckoutNonConeMode(sparseCheckout) {
         return __awaiter(this, void 0, void 0, function* () {
-            yield this.execGit(['config', 'core.sparseCheckout', 'true']);
-            const output = yield this.execGit([
-                'rev-parse',
-                '--git-path',
-                'info/sparse-checkout'
+            yield this.execGit([
+                'sparse-checkout',
+                'set',
+                '--no-cone',
+                ...sparseCheckout
             ]);
-            const sparseCheckoutPath = path.join(this.workingDirectory, output.stdout.trimRight());
-            yield fs.promises.appendFile(sparseCheckoutPath, `\n${sparseCheckout.join('\n')}\n`);
         });
     }
     checkout(ref, startPoint) {

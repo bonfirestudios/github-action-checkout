@@ -182,20 +182,12 @@ class GitCommandManager {
   }
 
   async sparseCheckoutNonConeMode(sparseCheckout: string[]): Promise<void> {
-    await this.execGit(['config', 'core.sparseCheckout', 'true'])
-    const output = await this.execGit([
-      'rev-parse',
-      '--git-path',
-      'info/sparse-checkout'
+    await this.execGit([
+      'sparse-checkout',
+      'set',
+      '--no-cone',
+      ...sparseCheckout
     ])
-    const sparseCheckoutPath = path.join(
-      this.workingDirectory,
-      output.stdout.trimRight()
-    )
-    await fs.promises.appendFile(
-      sparseCheckoutPath,
-      `\n${sparseCheckout.join('\n')}\n`
-    )
   }
 
   async checkout(ref: string, startPoint: string): Promise<void> {
