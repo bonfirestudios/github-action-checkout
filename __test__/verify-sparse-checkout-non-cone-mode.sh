@@ -9,20 +9,7 @@ fi
 # Verify sparse-checkout (non-cone-mode)
 cd sparse-checkout-non-cone-mode
 
-ENABLED=$(git config --local --get-all core.sparseCheckout)
-
-if [ "$?" != "0" ]; then
-    echo "Failed to verify that sparse-checkout is enabled"
-    exit 1
-fi
-
-# Check that sparse-checkout is enabled
-if [ "$ENABLED" != "true" ]; then
-  echo "Expected sparse-checkout to be enabled (is: $ENABLED)"
-  exit 1
-fi
-
-SPARSE_CHECKOUT_FILE=$(git rev-parse --git-path info/sparse-checkout)
+SPARSE=$(git sparse-checkout list)
 
 if [ "$?" != "0" ]; then
     echo "Failed to validate sparse-checkout"
@@ -30,8 +17,8 @@ if [ "$?" != "0" ]; then
 fi
 
 # Check that sparse-checkout list is not empty
-if [ ! -f "$SPARSE_CHECKOUT_FILE" ]; then
-  echo "Expected sparse-checkout file to exist"
+if [ -z "$SPARSE" ]; then
+  echo "Expected sparse-checkout list to not be empty"
   exit 1
 fi
 
