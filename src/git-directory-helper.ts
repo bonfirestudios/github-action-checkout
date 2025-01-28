@@ -11,7 +11,8 @@ export async function prepareExistingDirectory(
   repositoryPath: string,
   repositoryUrl: string,
   clean: boolean,
-  ref: string
+  ref: string,
+  sparse: boolean
 ): Promise<void> {
   assert.ok(repositoryPath, 'Expected repositoryPath to be defined')
   assert.ok(repositoryUrl, 'Expected repositoryUrl to be defined')
@@ -48,7 +49,7 @@ export async function prepareExistingDirectory(
     try {
       core.startGroup('Removing previously created refs, to avoid conflicts')
       // Checkout detached HEAD
-      if (!(await git.isDetached())) {
+      if (!sparse && !(await git.isDetached())) {
         await git.checkoutDetach()
       }
 

@@ -996,7 +996,7 @@ const fs = __importStar(__nccwpck_require__(7147));
 const fsHelper = __importStar(__nccwpck_require__(7219));
 const io = __importStar(__nccwpck_require__(7436));
 const path = __importStar(__nccwpck_require__(1017));
-function prepareExistingDirectory(git, repositoryPath, repositoryUrl, clean, ref) {
+function prepareExistingDirectory(git, repositoryPath, repositoryUrl, clean, ref, sparse) {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         assert.ok(repositoryPath, 'Expected repositoryPath to be defined');
@@ -1029,7 +1029,7 @@ function prepareExistingDirectory(git, repositoryPath, repositoryUrl, clean, ref
             try {
                 core.startGroup('Removing previously created refs, to avoid conflicts');
                 // Checkout detached HEAD
-                if (!(yield git.isDetached())) {
+                if (!sparse && !(yield git.isDetached())) {
                     yield git.checkoutDetach();
                 }
                 // Remove all refs/heads/*
@@ -1177,7 +1177,7 @@ function getSource(settings) {
             }
             // Prepare existing directory, otherwise recreate
             if (isExisting) {
-                yield gitDirectoryHelper.prepareExistingDirectory(git, settings.repositoryPath, repositoryUrl, settings.clean, settings.ref);
+                yield gitDirectoryHelper.prepareExistingDirectory(git, settings.repositoryPath, repositoryUrl, settings.clean, settings.ref, !!settings.sparseFile);
             }
             if (!git) {
                 // Downloading using REST API

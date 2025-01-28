@@ -9,6 +9,7 @@ const testWorkspace = path.join(__dirname, '_temp', 'git-directory-helper')
 let repositoryPath: string
 let repositoryUrl: string
 let clean: boolean
+let sparse: boolean
 let ref: string
 let git: IGitCommandManager
 
@@ -43,7 +44,8 @@ describe('git-directory-helper tests', () => {
       repositoryPath,
       repositoryUrl,
       clean,
-      ref
+      ref,
+      sparse
     )
 
     // Assert
@@ -66,7 +68,8 @@ describe('git-directory-helper tests', () => {
       repositoryPath,
       repositoryUrl,
       clean,
-      ref
+      ref,
+      sparse
     )
 
     // Assert
@@ -92,7 +95,8 @@ describe('git-directory-helper tests', () => {
       repositoryPath,
       repositoryUrl,
       clean,
-      ref
+      ref,
+      sparse
     )
 
     // Assert
@@ -114,7 +118,8 @@ describe('git-directory-helper tests', () => {
       repositoryPath,
       repositoryUrl,
       clean,
-      ref
+      ref,
+      sparse
     )
 
     // Assert
@@ -143,7 +148,8 @@ describe('git-directory-helper tests', () => {
       repositoryPath,
       repositoryUrl,
       clean,
-      ref
+      ref,
+      sparse
     )
 
     // Assert
@@ -170,7 +176,8 @@ describe('git-directory-helper tests', () => {
       repositoryPath,
       differentRepositoryUrl,
       clean,
-      ref
+      ref,
+      sparse
     )
 
     // Assert
@@ -195,7 +202,8 @@ describe('git-directory-helper tests', () => {
       repositoryPath,
       repositoryUrl,
       clean,
-      ref
+      ref,
+      sparse
     )
 
     // Assert
@@ -221,7 +229,8 @@ describe('git-directory-helper tests', () => {
       repositoryPath,
       repositoryUrl,
       clean,
-      ref
+      ref,
+      sparse
     )
 
     // Assert
@@ -246,7 +255,8 @@ describe('git-directory-helper tests', () => {
       repositoryPath,
       repositoryUrl,
       clean,
-      ref
+      ref,
+      sparse
     )
 
     // Assert
@@ -271,7 +281,8 @@ describe('git-directory-helper tests', () => {
       repositoryPath,
       repositoryUrl,
       clean,
-      ref
+      ref,
+      sparse
     )
 
     // Assert
@@ -302,7 +313,8 @@ describe('git-directory-helper tests', () => {
       repositoryPath,
       repositoryUrl,
       clean,
-      ref
+      ref,
+      sparse
     )
 
     // Assert
@@ -334,7 +346,8 @@ describe('git-directory-helper tests', () => {
       repositoryPath,
       repositoryUrl,
       clean,
-      ref
+      ref,
+      sparse
     )
 
     // Assert
@@ -366,7 +379,8 @@ describe('git-directory-helper tests', () => {
       repositoryPath,
       repositoryUrl,
       clean,
-      ref
+      ref,
+      sparse
     )
 
     // Assert
@@ -392,6 +406,8 @@ async function setup(testName: string): Promise<void> {
 
   // Clean
   clean = true
+
+  sparse = false
 
   // Ref
   ref = ''
